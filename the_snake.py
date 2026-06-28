@@ -1,4 +1,3 @@
-from abc import ABC
 from random import choice, randint
 
 import pygame
@@ -24,7 +23,7 @@ OBSTACLE_AMOUNT = 5
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 
-pygame.display.set_caption("The Snake")
+pygame.display.set_caption('The Snake')
 
 clock = pygame.time.Clock()
 
@@ -54,7 +53,7 @@ def handle_keys() -> tuple[int, int] | None:
     return direction
 
 
-class GameObject(ABC):
+class GameObject():
     """Базовый класс для всех игровых объектов."""
 
     def __init__(
@@ -208,5 +207,5 @@ def main():
         clock.tick(SPEED)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
