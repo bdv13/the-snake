@@ -1,119 +1,129 @@
 from random import choice, randint
 
-import pygame
+import pygame as pg
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 CENTER_POSITION = (GRID_WIDTH // 2 * GRID_SIZE, GRID_HEIGHT // 2 * GRID_SIZE)
+
 UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+
 BOARD_BACKGROUND_COLOR = (30, 30, 30)
-BORDER_COLOR = (220, 220, 220)
+DEFAULT_COLOR = (0, 0, 0)
 APPLE_COLOR = (229, 57, 53)
+APPLE_BORD_COLOR = (139, 0, 0)
 SNAKE_COLOR = (76, 175, 80)
-BOULDER_COLOR = (120, 120, 120)
+SNAKE_BORD_COLOR = (27, 94, 32)
+OBSTACLE_COLOR = (120, 120, 120)
+OBSTACLE_BORD_COLOR = (60, 60, 60)
+
 SPEED = 10
+
 OPPOSITES = {UP: DOWN, DOWN: UP, LEFT: RIGHT, RIGHT: LEFT}
 OBSTACLE_AMOUNT = 5
 
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 
-pygame.display.set_caption('The Snake')
+pg.display.set_caption("The Snake")
 
-clock = pygame.time.Clock()
+clock = pg.time.Clock()
 
 
 def handle_keys() -> tuple[int, int] | None:
     """Обработка нажатий клавиш пользователя."""
     direction = None
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
             raise SystemExit
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                pygame.quit()
+        elif event.type == pg.KEYDOWN:
+            if event.key == pg.K_ESCAPE:
+                pg.quit()
                 raise SystemExit
 
-            if event.key == pygame.K_UP:
+            if event.key == pg.K_UP:
                 direction = UP
-            elif event.key == pygame.K_DOWN:
+            elif event.key == pg.K_DOWN:
                 direction = DOWN
-            elif event.key == pygame.K_LEFT:
+            elif event.key == pg.K_LEFT:
                 direction = LEFT
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == pg.K_RIGHT:
                 direction = RIGHT
 
     return direction
 
 
-class GameObject():
+class GameObject:
     """Базовый класс для всех игровых объектов."""
 
-    def __init__(
-        self,
-        position: tuple[int, int] = CENTER_POSITION,
-        body_color: tuple[int, int, int] = (0, 0, 0)
-    ) -> None:
-        self.position = position
-        self.body_color = body_color
+    def __init__(self) -> None:
+        self.position: tuple[int, int] = CENTER_POSITION
+        self.body_color: tuple[int, int, int] = DEFAULT_COLOR
+        self.border_color: tuple[int, int, int] = DEFAULT_COLOR
 
-    def randomize_position(
-        self,
-        width: int = GRID_WIDTH,
-        height: int = GRID_HEIGHT,
-        size: int = GRID_SIZE,
-        ban_positions: set[tuple[int, int]] | None = None,
-    ) -> tuple[int, int]:
-        """Назначает случайную допустимую позицию объекту и возвращает её."""
-        if ban_positions is None:
-            ban_positions = set()
-
-        while True:
-            pos = (randint(0, width - 1) * size, randint(0, height - 1) * size)
-            if pos not in ban_positions:
-                self.position = pos
-                return pos
+    def draw_cell(self) -> None:
+        """Отрисовывает объект в виде одной клетки (GRID_SIZE x GRID_SIZE)."""
+        rect = pg.Rect(self.position, (GRID_SIZE, GRID_SIZE))
+        pg.draw.rect(screen, self.body_color, rect)
+        pg.draw.rect(screen, self.border_color, rect, 1)
 
     def draw(self) -> None:
-        """Отрисовка объекта."""
-        rect = pygame.Rect(self.position, (GRID_SIZE, GRID_SIZE))
-        pygame.draw.rect(screen, self.body_color, rect)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
+        """Базовый метод отрисовки."""
+        self.draw_cell()
 
 
 class Apple(GameObject):
     """Класс для объекта 'яблоко'. При подборе увеличивает длину змейки."""
 
-    def __init__(self) -> None:
-        super().__init__((0, 0), APPLE_COLOR)
+    def __init__(
+        self,
+        body_color: tuple[int, int, int] = DEFAULT_COLOR,
+        border_color: tuple[int, int, int] = DEFAULT_COLOR,
+        ban_positions: set[tuple[int, int]] = {CENTER_POSITION}
+    ) -> None:
+        super().__init__()
+        self.ban_positions: set[tuple[int, int]] = ban_positions
         self.randomize_position()
+        self.body_color: tuple[int, int, int] = body_color
+        self.border_color: tuple[int, int, int] = border_color
 
+    def randomize_position(self) -> None:
+        """Назначает случайную допустимую позицию и возвращает её."""
+        while True:
+            self.position = (
+                randint(0, GRID_WIDTH - 1) * GRID_SIZE,
+                randint(0, GRID_HEIGHT - 1) * GRID_SIZE,
+            )
+            if self.position not in self.ban_positions:
+                break
 
-class Obstacle(GameObject):
-    """Статическое препятствие, вызывающее проигрыш при столкновении."""
-
-    def __init__(self) -> None:
-        super().__init__((0, 0), BOULDER_COLOR)
-        self.randomize_position(ban_positions={CENTER_POSITION})
+    def draw(self) -> None:
+        """Отрисовка яблока."""
+        self.draw_cell()
 
 
 class Snake(GameObject):
     """Класс для объекта 'змейка'."""
 
-    def __init__(self) -> None:
-        super().__init__(CENTER_POSITION, SNAKE_COLOR)
+    def __init__(
+        self,
+        body_color: tuple[int, int, int] = DEFAULT_COLOR,
+        border_color: tuple[int, int, int] = DEFAULT_COLOR
+    ) -> None:
+        super().__init__()
+        self.body_color = body_color
+        self.border_color = border_color
         self.length: int = 1
         self.positions: list[tuple[int, int]] = [self.position]
         self.direction: tuple[int, int] = RIGHT
         self.next_direction: tuple[int, int] | None = None
-        self.last: tuple[int, int] | None = None
 
     def get_head_position(self) -> tuple[int, int]:
         """Возвращает первый сегмент змейки."""
@@ -122,25 +132,25 @@ class Snake(GameObject):
     def move(self) -> None:
         """Перемещает змейку на одну клетку и обновляет её тело."""
         x, y = self.get_head_position()
+        dx, dy = self.direction
 
-        new_x = (x + self.direction[0] * GRID_SIZE) % SCREEN_WIDTH
-        new_y = (y + self.direction[1] * GRID_SIZE) % SCREEN_HEIGHT
+        new_x = (x + dx * GRID_SIZE) % SCREEN_WIDTH
+        new_y = (y + dy * GRID_SIZE) % SCREEN_HEIGHT
 
         self.positions.insert(0, (new_x, new_y))
 
         if len(self.positions) > self.length:
-            self.last = self.positions.pop()
+            self.positions.pop()
 
-    def set_direction(self, direction: tuple[int, int] | None) -> None:
+    def update_direction(self, direction: tuple[int, int] | None) -> None:
         """
-        Устанавливаем направление движения змейки, если оно не
+        Обновляем направление движения змейки, если оно не
         противоположно текущему.
         """
+        # примаем ввод
         if direction and direction != OPPOSITES[self.direction]:
             self.next_direction = direction
-
-    def update_direction(self) -> None:
-        """Обновляет текущее направление движения, если оно было изменено."""
+        # применяем накопленной направление
         if self.next_direction:
             self.direction = self.next_direction
             self.next_direction = None
@@ -148,53 +158,81 @@ class Snake(GameObject):
     def reset(self) -> None:
         """Восстановление начального состояния змейки."""
         self.length = 1
-        self.position = CENTER_POSITION
-        self.positions = [CENTER_POSITION]
+        self.positions = [self.position]
         self.direction = choice([UP, DOWN, LEFT, RIGHT])
-        self.next_direction = None
-        self.last = None
 
-    def draw(self):
+    def draw(self) -> None:
         """Отрисовка змейки на экране."""
         for position in self.positions:
-            rect = pygame.Rect(position, (GRID_SIZE, GRID_SIZE))
-            pygame.draw.rect(screen, self.body_color, rect)
-            pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
+            rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
+            pg.draw.rect(screen, self.body_color, rect)
+            pg.draw.rect(screen, self.border_color, rect, 1)
 
 
 def main():
     """Основной игровой цикл."""
     # Инициализация pygame и экземпляров классов
-    pygame.init()
-    apple = Apple()
-    snake = Snake()
-    obstacles = [Obstacle() for _ in range(OBSTACLE_AMOUNT)]
+    pg.init()
+
+    snake = Snake(SNAKE_COLOR, SNAKE_BORD_COLOR)
+
+    apple = Apple(
+        APPLE_COLOR,
+        APPLE_BORD_COLOR,
+    )
+
+    obstacles = []
+    ban_positions = {CENTER_POSITION, apple.position}
+
+    for _ in range(OBSTACLE_AMOUNT):
+        obstacle = Apple(
+            OBSTACLE_COLOR,
+            OBSTACLE_BORD_COLOR,
+            ban_positions=ban_positions,
+        )
+        obstacles.append(obstacle)
+
+        ban_positions.add(obstacle.position)
 
     while True:
 
         # Ввод
         direction = handle_keys()
-        snake.set_direction(direction)
 
         # Обновление состояния игры
-        snake.update_direction()
+        snake.update_direction(direction)
         snake.move()
 
         # Столкновение с яблоком
         if snake.get_head_position() == apple.position:
             snake.length += 1
-            ban = set(snake.positions + [o.position for o in obstacles])
-            apple.randomize_position(ban_positions=ban)
+            apple.ban_positions = (
+                set(snake.positions)
+                | {o.position for o in obstacles}
+            )
+            apple.randomize_position()
 
         # Столкновение змейки с собой
-        if snake.get_head_position() in snake.positions[1:]:
-            obstacles = [Obstacle() for _ in range(OBSTACLE_AMOUNT)]
+        elif snake.get_head_position() in snake.positions[1:]:
             snake.reset()
+            apple.randomize_position()
+
+            ban_positions = {CENTER_POSITION, apple.position}
+            for o in obstacles:
+                o.ban_positions = ban_positions
+                o.randomize_position()
+                ban_positions.add(o.position)
 
         # Столкновение с препятствием
-        if snake.get_head_position() in {o.position for o in obstacles}:
-            obstacles = [Obstacle() for _ in range(OBSTACLE_AMOUNT)]
+        elif snake.get_head_position() in {o.position for o in obstacles}:
             snake.reset()
+            apple.randomize_position()
+
+            ban_positions = {CENTER_POSITION, apple.position}
+            for o in obstacles:
+                o.ban_positions = ban_positions
+                o.randomize_position()
+                ban_positions.add(o.position)
 
         # Отрисовка
         screen.fill(BOARD_BACKGROUND_COLOR)
@@ -203,9 +241,9 @@ def main():
         for boulder in obstacles:
             boulder.draw()
 
-        pygame.display.update()
+        pg.display.update()
         clock.tick(SPEED)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
