@@ -30,7 +30,7 @@ OBSTACLE_AMOUNT = 5
 
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 
-pg.display.set_caption("The Snake")
+pg.display.set_caption('The Snake')
 
 clock = pg.time.Clock()
 
@@ -86,11 +86,21 @@ class Apple(GameObject):
         self,
         body_color: tuple[int, int, int] = DEFAULT_COLOR,
         border_color: tuple[int, int, int] = DEFAULT_COLOR,
-        ban_positions: set[tuple[int, int]] = {CENTER_POSITION}
+        ban_positions: set[tuple[int, int]] | None = None
     ) -> None:
+
         super().__init__()
-        self.ban_positions: set[tuple[int, int]] = ban_positions
+
+        # Если ban_positions не передан, задаём значение по умолчанию (центр
+        # экрана), чтобы избежать mutable default argument и общего состояния
+        # между объектами
+
+        if ban_positions is None:
+            ban_positions = {CENTER_POSITION}
+        self.ban_positions = ban_positions
+
         self.randomize_position()
+
         self.body_color: tuple[int, int, int] = body_color
         self.border_color: tuple[int, int, int] = border_color
 
@@ -238,12 +248,12 @@ def main():
         screen.fill(BOARD_BACKGROUND_COLOR)
         apple.draw()
         snake.draw()
-        for boulder in obstacles:
-            boulder.draw()
+        for o in obstacles:
+            o.draw()
 
         pg.display.update()
         clock.tick(SPEED)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
